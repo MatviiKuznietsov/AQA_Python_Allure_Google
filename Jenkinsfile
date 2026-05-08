@@ -1,63 +1,75 @@
 pipeline {
     agent any
 
-    tools {
-        python 'Python'
+    triggers {
+        pollSCM('H/5 * * * *')  // проверка изменений каждые 5 минут
+        // или GitHub webhook для мгновенного запуска
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/username/my_project.git'
+                echo '📥 Получение кода из репозитория...'
+                checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                bat 'python -m pip install --upgrade pip'
-                bat 'pip install -r requirements.txt'
+                echo '📦 Установка зависимостей...'
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                bat 'pytest tests --junitxml=report.xml --html=report.html'
-            }
-        }
-
-        stage('Publish Test Results') {
-            steps {
-                junit 'report.xml'
-
-                publishHTML(target: [
-                    allowMissing: false,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: '.',
-                    reportFiles: 'report.html',
-                    reportName: 'Pytest HTML Report'
-                ])
+                echo '🧪 Запуск автотестов...'
+                sh '''
+                    . venv/bin/activate
+                    pytest --junitxml=results.xml -v --html=report.html --self-contained-html
+                '''
             }
         }
     }
 
     post {
-
         always {
-            emailext(
-                subject: "Jenkins Build: ${currentBuild.currentResult}",
-                body: """
-                    Build Status: ${currentBuild.currentResult}
+            // Публикация результатов тестов
+            junit 'results.xml'
+            archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
 
-                    Project: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
+            // Отправка email
+            emailext (
+                subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
+                body: '''
+                    <h2>Результаты сборки: ${BUILD_STATUS}</h2>
+                    <p>Проект: ${JOB_NAME}</p>
+                    <p>Номер сборки: ${BUILD_NUMBER}</p>
+                    <p>Время: ${BUILD_TIMESTAMP}</p>
+                    <p>Подробнее: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
 
-                    Check console output at:
-                    ${env.BUILD_URL}
-                """,
-                to: 'InsertYour@Mail.Here'
+                    <h3>Последние изменения:</h3>
+                    ${CHANGES_SINCE_LAST_SUCCESS}
+                ''',
+                to: 'InsertYour@Mail.Here',
+                from: 'jenkins@yourcompany.com',
+                attachLog: true,
+                attachmentsPattern: 'report.html',
+                mimeType: 'text/html'
             )
+        }
+
+        success {
+            echo '✅ Тесты прошли успешно!'
+        }
+
+        failure {
+            echo '❌ Тесты упали. Проверьте логи.'
         }
     }
 }
