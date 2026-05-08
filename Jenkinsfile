@@ -24,7 +24,7 @@ pipeline {
                 bat '''
                     venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pip install --upgrade pip
-                    venv\\Scripts\\python -m pip install -r requirements.txt pytest pytest-html
+                    venv\\Scripts\\python -m pip install -r requirements.txt
                 '''
             }
         }
@@ -34,7 +34,7 @@ pipeline {
                 echo '🧪 Запуск автотестов...'
                 bat '''
                     venv\\Scripts\\activate.bat
-                    venv\\Scripts\\python -m pytest --junitxml=results.xml --html=report.html --self-contained-html -v || exit /b 0
+                    venv\\Scripts\\python -m pytest --alluredir=allure-results --junitxml=results.xml -v || exit /b 0
                 '''
             }
         }
@@ -45,6 +45,8 @@ pipeline {
             echo '📋 Сбор результатов...'
 
             junit testResults: 'results.xml', allowEmptyResults: true
+
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
 
             archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
 
