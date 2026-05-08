@@ -31,6 +31,7 @@ pipeline {
                     call venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pip install --upgrade pip
                     venv\\Scripts\\python -m pip install -r requirements.txt
+                    venv\\Scripts\\python -m playwright install --with-deps
                 '''
             }
         }
