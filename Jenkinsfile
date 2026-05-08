@@ -53,7 +53,7 @@ pipeline {
 
     post {
         always {
-            echo '📋 Collecting results...'
+            echo '📋 Collecting results and sending notifications...'
             
             script {
                 try {
@@ -81,29 +81,31 @@ pipeline {
                 } catch (Exception e) {
                     echo "HTML Report publishing failed: ${e.message}"
                 }
+
+                echo '📧 Sending email notification...'
+                try {
+                    emailext (
+                        subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
+                        body: """
+                            <h2>Result: ${currentBuild.currentResult}</h2>
+                            <p>Project: ${JOB_NAME}</p>
+                            <p>Build: ${BUILD_NUMBER}</p>
+                            <p>Check the details here: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                            <p>Allure Report: <a href="${BUILD_URL}allure/">${BUILD_URL}allure/</a></p>
+                        """,
+                        to: 'matveimtvcool@gmail.com',
+                        attachLog: true,
+                        mimeType: 'text/html',
+                        recipientProviders: [culprits(), developers(), requestor(), upstreamDevelopers()]
+                    )
+                } catch (Exception e) {
+                    echo "Email notification failed: ${e.message}"
+                }
             }
         }
 
         fixed { echo '✅ Build Fixed' }
         regression { echo '❌ Regression detected' }
-
-        always {
-            echo '📧 Sending email notification...'
-            emailext (
-                subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
-                body: """
-                    <h2>Result: ${currentBuild.currentResult}</h2>
-                    <p>Project: ${JOB_NAME}</p>
-                    <p>Build: ${BUILD_NUMBER}</p>
-                    <p>Check the details here: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                    <p>Allure Report: <a href="${BUILD_URL}allure/">${BUILD_URL}allure/</a></p>
-                """,
-                to: 'matveimtvcool@gmail.com',
-                attachLog: true,
-                mimeType: 'text/html',
-                recipientProviders: [culprits(), developers(), requestor(), upstreamDevelopers()]
-            )
-        }
 
         success { echo '✅ Success!' }
         failure { echo '❌ Build Error' }
