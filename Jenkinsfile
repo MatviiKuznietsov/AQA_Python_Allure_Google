@@ -13,7 +13,7 @@ pipeline {
             steps {
                 echo '🐍 Настройка Python окружения...'
                 bat '''
-                    py -m venv venv || python -m venv venv
+                    "C:\\Users\\Matvii\\AppData\\Local\\Programs\\Python\\Python312\\python.exe" -m venv venv
                 '''
             }
         }
@@ -24,8 +24,7 @@ pipeline {
                 bat '''
                     venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pip install --upgrade pip
-                    venv\\Scripts\\python -m pip install -r requirements.txt
-                    venv\\Scripts\\python -m pip install pytest pytest-html
+                    venv\\Scripts\\python -m pip install -r requirements.txt pytest pytest-html
                 '''
             }
         }
@@ -35,7 +34,7 @@ pipeline {
                 echo '🧪 Запуск автотестов...'
                 bat '''
                     venv\\Scripts\\activate.bat
-                    venv\\Scripts\\pytest --junitxml=results.xml --html=report.html --self-contained-html -v || exit /b 0
+                    venv\\Scripts\\python -m pytest --junitxml=results.xml --html=report.html --self-contained-html -v || exit /b 0
                 '''
             }
         }
@@ -45,11 +44,10 @@ pipeline {
         always {
             echo '📋 Сбор результатов...'
 
-            // Публикация тестов
             junit testResults: 'results.xml', allowEmptyResults: true
 
-            // Архивация HTML-отчёта
             archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
+
             publishHTML([
                 allowMissing: true,
                 alwaysLinkToLastBuild: true,
@@ -59,14 +57,13 @@ pipeline {
                 reportName: 'Test HTML Report'
             ])
 
-            // Отправка email
             emailext (
                 subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
                 body: '''
-                    <h2>Результат сборки: ${BUILD_STATUS}</h2>
-                    <p><b>Проект:</b> ${JOB_NAME}</p>
-                    <p><b>Номер сборки:</b> ${BUILD_NUMBER}</p>
-                    <p><b>Ссылка:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                    <h2>Результат: ${BUILD_STATUS}</h2>
+                    <p>Проект: ${JOB_NAME}</p>
+                    <p>Build: ${BUILD_NUMBER}</p>
+                    <p><a href="${BUILD_URL}">Открыть сборку в Jenkins</a></p>
                 ''',
                 to: 'InsertYour@Mail.Here',
                 attachLog: true,
@@ -74,7 +71,7 @@ pipeline {
             )
         }
 
-        success { echo '✅ Сборка и тесты успешно завершены!' }
-        failure { echo '❌ Сборка завершилась с ошибками.' }
+        success { echo '✅ Успешно!' }
+        failure { echo '❌ Ошибка сборки' }
     }
 }
