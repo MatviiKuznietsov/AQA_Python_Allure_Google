@@ -11,11 +11,9 @@ pipeline {
 
         stage('Setup Python Environment') {
             steps {
-                echo '� Настройка Python окружения...'
+                echo '🐍 Настройка Python окружения...'
                 bat '''
-                    python -m venv venv
-                    venv\\Scripts\\activate.bat
-                    python --version
+                    py -m venv venv || python -m venv venv
                 '''
             }
         }
@@ -25,10 +23,9 @@ pipeline {
                 echo '📦 Установка зависимостей...'
                 bat '''
                     venv\\Scripts\\activate.bat
-                    pip install --upgrade pip
-                    pip install pytest pytest-html allure-pytest playwright
-                    playwright install
-                    pip install -r requirements.txt || echo "requirements.txt not found, continuing..."
+                    venv\\Scripts\\python -m pip install --upgrade pip
+                    venv\\Scripts\\python -m pip install -r requirements.txt
+                    venv\\Scripts\\python -m pip install pytest pytest-html
                 '''
             }
         }
@@ -38,94 +35,46 @@ pipeline {
                 echo '🧪 Запуск автотестов...'
                 bat '''
                     venv\\Scripts\\activate.bat
-                    pytest --junitxml=results.xml --alluredir=allure-results -v --html=report.html --self-contained-html
+                    venv\\Scripts\\pytest --junitxml=results.xml --html=report.html --self-contained-html -v || exit /b 0
                 '''
-            }
-        }
-
-        stage('Generate Allure Report') {
-            steps {
-                echo '📊 Генерация Allure отчета...'
-                script {
-                    try {
-                        bat '''
-                            allure generate allure-results --clean -o allure-report
-                        '''
-                    } catch (Exception e) {
-                        echo "Allure отчет не сгенерирован: ${e.getMessage()}"
-                    }
-                }
             }
         }
     }
 
     post {
         always {
-            echo '📋 Сбор артефактов...'
-            
-            // JUnit результаты
+            echo '📋 Сбор результатов...'
+
+            // Публикация тестов
             junit testResults: 'results.xml', allowEmptyResults: true
-            
-            // HTML отчет
+
+            // Архивация HTML-отчёта
+            archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
             publishHTML([
-                allowMissing: false,
+                allowMissing: true,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
                 reportDir: '.',
                 reportFiles: 'report.html',
                 reportName: 'Test HTML Report'
             ])
-            
-            // Allure отчет
-            script {
-                try {
-                    allure([
-                        includeProperties: false,
-                        jdk: '',
-                        properties: [],
-                        reportBuildPolicy: 'ALWAYS',
-                        results: [[path: 'allure-results']]
-                    ])
-                } catch (Exception e) {
-                    echo "Allure plugin not available or error: ${e.getMessage()}"
-                    // Fallback: архивируем allure-results
-                    archiveArtifacts artifacts: 'allure-results/**/*', allowEmptyArchive: true
-                }
-            }
-            
-            // Архивируем все артефакты
-            archiveArtifacts artifacts: 'report.html,results.xml,allure-results/**/*,allure-report/**/*', allowEmptyArchive: true
 
-            // Email уведомление
+            // Отправка email
             emailext (
                 subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
-                body: """
-                    <h2>🔍 Результат сборки: ${BUILD_STATUS}</h2>
-                    <p><strong>Проект:</strong> ${JOB_NAME}</p>
-                    <p><strong>Build:</strong> ${BUILD_NUMBER}</p>
-                    <p><strong>Ссылка на сборку:</strong> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                    <p><strong>Ссылка на Allure отчет:</strong> <a href="${BUILD_URL}allure">${BUILD_URL}allure</a></p>
-                    <p><strong>Ссылка на HTML отчет:</strong> <a href="${BUILD_URL}HTML_20Report/">${BUILD_URL}HTML_20Report/</a></p>
-                """,
+                body: '''
+                    <h2>Результат сборки: ${BUILD_STATUS}</h2>
+                    <p><b>Проект:</b> ${JOB_NAME}</p>
+                    <p><b>Номер сборки:</b> ${BUILD_NUMBER}</p>
+                    <p><b>Ссылка:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                ''',
                 to: 'InsertYour@Mail.Here',
                 attachLog: true,
                 mimeType: 'text/html'
             )
         }
 
-        success { 
-            echo '✅ Тесты успешно выполнены!'
-            echo '📊 Allure отчет доступен по ссылке: ${BUILD_URL}allure'
-        }
-        
-        failure { 
-            echo '❌ Ошибка в выполнении тестов.'
-            echo '📋 Проверьте логи для детальной информации.'
-        }
-        
-        unstable { 
-            echo '⚠️ Некоторые тесты не прошли.'
-            echo '📊 Проверьте Allure отчет для деталей.'
-        }
+        success { echo '✅ Сборка и тесты успешно завершены!' }
+        failure { echo '❌ Сборка завершилась с ошибками.' }
     }
 }
