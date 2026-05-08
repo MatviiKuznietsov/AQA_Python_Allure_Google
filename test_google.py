@@ -16,7 +16,7 @@ class TestGoogleHomepage:
         with allure.step("Verify page is fully loaded"):
             google_home_page.verify_page_fully_loaded()
 
-    @allure.feature("Google Homepage")
+    @allure.feature("Google Homepage ")
     @allure.story("Search Functionality")
     @allure.title("Verify search input accepts text")
     @allure.description("Test that the search input field accepts user input")
