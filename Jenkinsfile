@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     tools {
-        // Предполагаем, что в Jenkins настроен Allure Commandline с именем 'allure'
+        // Предполагаем, что в Jenkins настроен Allure Commandline с именем 'Allure'
         // Если имя другое, его нужно будет поправить в настройках Jenkins или здесь
-        allure 'allure'
+        allure 'Allure'
     }
 
     stages {
@@ -52,7 +52,7 @@ pipeline {
 
             junit testResults: 'results.xml', allowEmptyResults: true
 
-            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']], commandline: 'allure'
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']], commandline: 'Allure'
 
             archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
 
