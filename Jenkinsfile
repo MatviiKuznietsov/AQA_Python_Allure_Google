@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        pollSCM('H/5 * * * *') // Poll SCM every 5 minutes
+    }
+
     tools {
         // Assume Allure Commandline is configured in Jenkins with the name 'Allure'
         // If the name is different, it will need to be adjusted in Jenkins settings or here
