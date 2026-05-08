@@ -73,7 +73,7 @@ pipeline {
                     <p>Build: ${BUILD_NUMBER}</p>
                     <p><a href="${BUILD_URL}">Открыть сборку в Jenkins</a></p>
                 ''',
-                to: 'InsertYour@Mail.Here',
+                to: 'matveimtvcool@gmail.com',
                 attachLog: true,
                 mimeType: 'text/html'
             )
