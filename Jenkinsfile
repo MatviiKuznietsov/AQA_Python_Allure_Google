@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    tools {
+        // Предполагаем, что в Jenkins настроен Allure Commandline с именем 'allure'
+        // Если имя другое, его нужно будет поправить в настройках Jenkins или здесь
+        allure 'allure'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -22,7 +28,7 @@ pipeline {
             steps {
                 echo '📦 Установка зависимостей...'
                 bat '''
-                    venv\\Scripts\\activate.bat
+                    call venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pip install --upgrade pip
                     venv\\Scripts\\python -m pip install -r requirements.txt
                 '''
@@ -33,7 +39,7 @@ pipeline {
             steps {
                 echo '🧪 Запуск автотестов...'
                 bat '''
-                    venv\\Scripts\\activate.bat
+                    call venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pytest --alluredir=allure-results --junitxml=results.xml -v || exit /b 0
                 '''
             }
@@ -46,7 +52,7 @@ pipeline {
 
             junit testResults: 'results.xml', allowEmptyResults: true
 
-            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']], commandline: 'allure'
 
             archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
 
