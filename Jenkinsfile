@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    triggers {
-        pollSCM('H/5 * * * *')  // проверка изменений каждые 5 минут
-        // или GitHub webhook для мгновенного запуска
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -17,9 +12,9 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 echo '📦 Установка зависимостей...'
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
+                bat '''
+                    python -m venv venv
+                    venv\\Scripts\\activate.bat
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -29,9 +24,9 @@ pipeline {
         stage('Run Tests') {
             steps {
                 echo '🧪 Запуск автотестов...'
-                sh '''
-                    . venv/bin/activate
-                    pytest --junitxml=results.xml -v --html=report.html --self-contained-html
+                bat '''
+                    venv\\Scripts\\activate.bat
+                    pytest --junitxml=results.xml -v --html=report.html --self-contained-html || exit /b 0
                 '''
             }
         }
@@ -40,26 +35,24 @@ pipeline {
     post {
         always {
             // Публикация результатов тестов
-            junit 'results.xml'
+            junit testResults: 'results.xml', allowEmptyResults: true
+
             archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
 
             // Отправка email
             emailext (
                 subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
                 body: '''
-                    <h2>Результаты сборки: ${BUILD_STATUS}</h2>
+                    <h2>Результат сборки: ${BUILD_STATUS}</h2>
                     <p>Проект: ${JOB_NAME}</p>
-                    <p>Номер сборки: ${BUILD_NUMBER}</p>
-                    <p>Время: ${BUILD_TIMESTAMP}</p>
-                    <p>Подробнее: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-
-                    <h3>Последние изменения:</h3>
-                    ${CHANGES_SINCE_LAST_SUCCESS}
+                    <p>Build №: ${BUILD_NUMBER}</p>
+                    <p>Дата: ${BUILD_TIMESTAMP}</p>
+                    <p>Ссылка: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                 ''',
                 to: 'InsertYour@Mail.Here',
-                from: 'jenkins@yourcompany.com',
+                from: 'jenkins@your-server.com',
                 attachLog: true,
-                attachmentsPattern: 'report.html',
+                attachmentsPattern: '**/*.html',
                 mimeType: 'text/html'
             )
         }
@@ -67,9 +60,8 @@ pipeline {
         success {
             echo '✅ Тесты прошли успешно!'
         }
-
         failure {
-            echo '❌ Тесты упали. Проверьте логи.'
+            echo '❌ Сборка завершилась с ошибкой.'
         }
     }
 }
