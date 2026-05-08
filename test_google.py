@@ -6,7 +6,7 @@ from pages.google_home_page import GoogleHomePage
 @allure.feature("Google Homepage ")
 class TestGoogleHomepage:
     
-    @allure.feature("Google Homepage")
+    @allure.feature("Google Homepage ")
     @allure.story("Page Load Verification")
     @allure.title("Verify Google homepage loads successfully")
     @allure.description("Test that Google homepage loads and displays the search form")
