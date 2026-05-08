@@ -54,35 +54,54 @@ pipeline {
     post {
         always {
             echo '📋 Collecting results...'
+            
+            script {
+                try {
+                    junit testResults: 'results.xml', allowEmptyResults: true
+                } catch (Exception e) {
+                    echo "JUnit archiving failed: ${e.message}"
+                }
+                
+                try {
+                    allure includeProperties: false, jdk: '', results: [[path: 'allure-results']], commandline: 'Allure'
+                } catch (Exception e) {
+                    echo "Allure report generation failed: ${e.message}"
+                }
 
-            junit testResults: 'results.xml', allowEmptyResults: true
+                try {
+                    archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'report.html',
+                        reportName: 'Test HTML Report'
+                    ])
+                } catch (Exception e) {
+                    echo "HTML Report publishing failed: ${e.message}"
+                }
+            }
+        }
 
-            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']], commandline: 'Allure'
+        fixed { echo '✅ Build Fixed' }
+        regression { echo '❌ Regression detected' }
 
-            archiveArtifacts artifacts: 'report.html', allowEmptyArchive: true
-
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: '.',
-                reportFiles: 'report.html',
-                reportName: 'Test HTML Report'
-            ])
-
+        always {
+            echo '📧 Sending email notification...'
             emailext (
                 subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
-                body: '''
-                    <h2>Result: ${BUILD_STATUS}</h2>
+                body: """
+                    <h2>Result: ${currentBuild.currentResult}</h2>
                     <p>Project: ${JOB_NAME}</p>
                     <p>Build: ${BUILD_NUMBER}</p>
-                    <p>Status: ${currentBuild.currentResult}</p>
-                    <p><a href="${BUILD_URL}">Open build in Jenkins</a></p>
-                    <p><a href="${BUILD_URL}allure/">Open Allure Report</a></p>
-                ''',
+                    <p>Check the details here: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                    <p>Allure Report: <a href="${BUILD_URL}allure/">${BUILD_URL}allure/</a></p>
+                """,
                 to: 'matveimtvcool@gmail.com',
                 attachLog: true,
-                mimeType: 'text/html'
+                mimeType: 'text/html',
+                recipientProviders: [culprits(), developers(), requestor(), upstreamDevelopers()]
             )
         }
 
