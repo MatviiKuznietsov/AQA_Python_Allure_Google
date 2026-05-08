@@ -2,22 +2,22 @@ pipeline {
     agent any
 
     tools {
-        // Предполагаем, что в Jenkins настроен Allure Commandline с именем 'Allure'
-        // Если имя другое, его нужно будет поправить в настройках Jenkins или здесь
+        // Assume Allure Commandline is configured in Jenkins with the name 'Allure'
+        // If the name is different, it will need to be adjusted in Jenkins settings or here
         allure 'Allure'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo '📥 Получение кода из репозитория...'
+                echo '📥 Fetching code from repository...'
                 checkout scm
             }
         }
 
         stage('Setup Python Environment') {
             steps {
-                echo '🐍 Настройка Python окружения...'
+                echo '🐍 Setting up Python environment...'
                 bat '''
                     "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" -m venv venv
                 '''
@@ -26,7 +26,7 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                echo '📦 Установка зависимостей...'
+                echo '📦 Installing dependencies...'
                 bat '''
                     call venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pip install --upgrade pip
@@ -38,7 +38,7 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                echo '🧪 Запуск автотестов...'
+                echo '🧪 Running auto-tests...'
                 bat '''
                     call venv\\Scripts\\activate.bat
                     venv\\Scripts\\python -m pytest --alluredir=allure-results --junitxml=results.xml -v || exit /b 0
@@ -49,7 +49,7 @@ pipeline {
 
     post {
         always {
-            echo '📋 Сбор результатов...'
+            echo '📋 Collecting results...'
 
             junit testResults: 'results.xml', allowEmptyResults: true
 
@@ -69,10 +69,12 @@ pipeline {
             emailext (
                 subject: "Jenkins Build ${currentBuild.fullDisplayName} — ${currentBuild.currentResult}",
                 body: '''
-                    <h2>Результат: ${BUILD_STATUS}</h2>
-                    <p>Проект: ${JOB_NAME}</p>
+                    <h2>Result: ${BUILD_STATUS}</h2>
+                    <p>Project: ${JOB_NAME}</p>
                     <p>Build: ${BUILD_NUMBER}</p>
-                    <p><a href="${BUILD_URL}">Открыть сборку в Jenkins</a></p>
+                    <p>Status: ${currentBuild.currentResult}</p>
+                    <p><a href="${BUILD_URL}">Open build in Jenkins</a></p>
+                    <p><a href="${BUILD_URL}allure/">Open Allure Report</a></p>
                 ''',
                 to: 'matveimtvcool@gmail.com',
                 attachLog: true,
@@ -80,7 +82,7 @@ pipeline {
             )
         }
 
-        success { echo '✅ Успешно!' }
-        failure { echo '❌ Ошибка сборки' }
+        success { echo '✅ Success!' }
+        failure { echo '❌ Build Error' }
     }
 }
